@@ -8,5 +8,8 @@ import moxy.viewstate.strategy.StateStrategyType
 @StateStrategyType(AddToEndSingleStrategy::class)
 interface FragmentView : MvpView {
     fun setOriginalImage(selectedFile: Uri?)
-    fun setConvertedImage(newImage: Uri)
+    fun setConvertedToPNGImage(newImage: Uri)
+    fun setProgressBar()
+    fun setCancelButton()
+    fun setOnErrorReturn(throwable: Throwable)
 }

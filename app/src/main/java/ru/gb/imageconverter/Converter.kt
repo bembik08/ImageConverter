@@ -9,13 +9,15 @@ import java.io.OutputStream
 
 object Converter {
 
-    var counter = 1
+    private var counter = 1
+
+    private lateinit var stream: OutputStream
 
     fun convertImage(image: Bitmap, path: String?): Single<File> {
         return Single.create(SingleOnSubscribe {
             if (it.isDisposed) return@SingleOnSubscribe
             val newImage = File(path, "NewImage${counter}.png")
-            val stream: OutputStream = FileOutputStream(newImage)
+            stream = FileOutputStream(newImage)
             if (image.compress(Bitmap.CompressFormat.PNG, 100, stream)) {
                 it.onSuccess(newImage)
                 counter++
@@ -24,5 +26,10 @@ object Converter {
             stream.flush()
             stream.close()
         })
+    }
+
+    fun cancel () {
+        stream.flush()
+        stream.close()
     }
 }

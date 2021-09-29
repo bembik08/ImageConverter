@@ -2,37 +2,43 @@ package ru.gb.imageconverter
 
 import android.app.Activity.RESULT_OK
 import android.content.Intent
+import android.content.Intent.ACTION_GET_CONTENT
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.os.Bundle
-import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
 import android.widget.Toast
+import by.kirich1409.viewbindingdelegate.viewBinding
+import androidx.fragment.app.Fragment
+import ru.gb.imageconverter.databinding.FragmentConvertBinding
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
+import io.reactivex.rxjava3.schedulers.Schedulers
 import kotlinx.android.synthetic.main.fragment_convert.*
 import moxy.MvpAppCompatFragment
 import moxy.ktx.moxyPresenter
 
-class ConvertFragment : MvpAppCompatFragment(), FragmentView {
+class ConvertFragment : MvpAppCompatFragment(R.layout.fragment_convert), FragmentView {
     companion object {
-        fun newInstance() = ConvertFragment()
+        fun newInstance(): Fragment = ConvertFragment()
         var selectedFile: Uri? = null
         var path: String? = null
     }
 
-    private val presenter by moxyPresenter { ConvertFragmentPresenter() }
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View? {
-        return inflater.inflate(R.layout.fragment_convert, container, false)
+    private val presenter by moxyPresenter {
+        ConvertFragmentPresenter(
+            Schedulers.io(),
+            AndroidSchedulers.mainThread()
+        )
     }
+
+    private val viewBinding: FragmentConvertBinding by viewBinding()
+    private var progressBarOn = false
+    private var cancelButtonActive = false
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        convertButton.setOnClickListener {
+        viewBinding.convertButton.setOnClickListener {
             try {
                 val bitmap = (imageView.drawable as BitmapDrawable).bitmap
                 presenter.convertAndSaveNewImage(bitmap, path)
@@ -43,11 +49,14 @@ class ConvertFragment : MvpAppCompatFragment(), FragmentView {
             }
         }
 
-        selectButton.setOnClickListener {
-            val intent = Intent()
-                .setType("*/*")
-                .setAction(Intent.ACTION_GET_CONTENT)
-            startActivityForResult(Intent.createChooser(intent, "Select a file"), 111)
+        viewBinding.cancelButton.setOnClickListener {
+            presenter.onCancelButtonCLicked()
+        }
+
+        viewBinding.selectButton.setOnClickListener {
+            val intent = Intent(ACTION_GET_CONTENT)
+                .setType("image/*")
+            startActivityForResult(intent, 111)
         }
     }
 
@@ -61,13 +70,38 @@ class ConvertFragment : MvpAppCompatFragment(), FragmentView {
     }
 
     override fun setOriginalImage(selectedFile: Uri?) {
-        imageView.setImageURI(selectedFile)
+        viewBinding.imageView.setImageURI(selectedFile)
         Toast.makeText(context, "New image was set from presenter", Toast.LENGTH_SHORT).show()
     }
 
-    override fun setConvertedImage(newImage: Uri) {
+    override fun setConvertedToPNGImage(newImage: Uri) {
         imageView2.setImageURI(newImage)
         Toast.makeText(context, "Image was converted to PNG and saved at $path", Toast.LENGTH_LONG)
+            .show()
+    }
+
+    override fun setProgressBar() {
+        if (!progressBarOn) {
+            viewBinding.progressBar.visibility = View.VISIBLE
+            progressBarOn = true
+        } else {
+            viewBinding.progressBar.visibility = View.INVISIBLE
+            progressBarOn = false
+        }
+    }
+
+    override fun setCancelButton() {
+        if (!cancelButtonActive) {
+            viewBinding.cancelButton.visibility = View.VISIBLE
+            cancelButtonActive = true
+        } else {
+            viewBinding.cancelButton.visibility = View.INVISIBLE
+            cancelButtonActive = false
+        }
+    }
+
+    override fun setOnErrorReturn(throwable: Throwable) {
+        Toast.makeText(context, "Converting was canceled due to $throwable", Toast.LENGTH_LONG)
             .show()
     }
 }
